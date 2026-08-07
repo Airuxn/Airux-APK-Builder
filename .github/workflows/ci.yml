@@ -34,6 +34,9 @@ jobs:
       - name: Ruff lint
         run: ruff check .
 
+      - name: Dependency audit
+        run: pip-audit -r requirements-dev.txt
+
       - name: Compile check
         run: python -m py_compile apk_builder.py
 
@@ -54,3 +57,5 @@ jobs:
           grep -q '^Type=Application' Airux-APK-Builder.desktop
           bash scripts/install-desktop.sh /tmp/Airux-APK-Builder.desktop
           grep -q 'apk_builder.py' /tmp/Airux-APK-Builder.desktop
+          grep -q '^Type=Application' /tmp/Airux-APK-Builder.desktop
+          grep -q '^Path=' /tmp/Airux-APK-Builder.desktop

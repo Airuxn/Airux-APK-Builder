@@ -6,7 +6,7 @@ Desktop GUI to build **Android APKs locally** with **Expo EAS** (`eas build --lo
 
 [![CI](https://github.com/Airuxn/Airux-APK-Builder/actions/workflows/ci.yml/badge.svg)](https://github.com/Airuxn/Airux-APK-Builder/actions/workflows/ci.yml)
 
-**Quality:** CI (Ruff, pytest, py_compile, ShellCheck) · CodeQL · Dependabot
+**Quality:** CI (Ruff, pip-audit, pytest, py_compile, ShellCheck) · CodeQL · Dependabot
 
 ---
 
@@ -100,6 +100,7 @@ Optional env:
 python3 -m venv .venv && source .venv/bin/activate
 pip install -r requirements-dev.txt
 ruff check .
+pip-audit -r requirements-dev.txt
 pytest -q
 python3 -m py_compile apk_builder.py
 bash scripts/check-setup.sh
