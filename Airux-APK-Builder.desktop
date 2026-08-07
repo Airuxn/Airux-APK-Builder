@@ -1,0 +1,13 @@
+[Desktop Entry]
+Version=1.0
+Type=Application
+Name=Airux Tech · APK Builder
+Comment=Professional local Android APK builds (Expo EAS)
+# Prefer: bash scripts/install-desktop.sh
+# Or set Exec/Path to your clone location.
+Exec=python3 "/path/to/Airux-APK-Builder/apk_builder.py"
+Path=/path/to/Airux-APK-Builder
+Icon=android
+Terminal=false
+Categories=Development;Utility;
+StartupNotify=true
