@@ -1,0 +1,44 @@
+# codecov.yml — Airux APK Builder
+#
+# This project is a tkinter desktop GUI. The uploaded coverage report is based on
+# pytest-cov over the whole repository, but the badge we show intentionally
+# reflects only the pure, headless helper functions in builder_core.py:
+#   - EAS/local-build log-line classification
+#   - app.json slug parsing and sanitization
+#   - APK discovery with cache-directory filtering
+#   - Node / Android SDK / EAS environment checks
+#   - desktop-entry install script
+#
+# The GUI layer in apk_builder.py (ApkBuilderApp, ShimmerHeader, PreflightTile,
+# AccentPanel, BuildButton, StatusChip, and event handlers) requires a display
+# (X11/Wayland) and is excluded from the coverage badge. It is validated by:
+#   - CI compile check (python -m py_compile apk_builder.py)
+#   - manual desktop QA on a Linux workstation
+#   - future headless tkinter tests if/when the project adds Xvfb-based GUI tests
+
+codecov:
+  require_ci_to_pass: yes
+  notify:
+    wait_for_ci: yes
+
+coverage:
+  status:
+    project:
+      default:
+        target: 85%
+        threshold: 2%
+    patch:
+      default:
+        target: 70%
+        threshold: 5%
+  ignore:
+    - "apk_builder.py"
+    - "tests/**"
+    - "scripts/**"
+    - "Start.sh"
+    - "Airux-APK-Builder.desktop"
+
+comment:
+  layout: "reach, diff, flags, files"
+  behavior: default
+  require_changes: false

@@ -18,9 +18,9 @@ jobs:
   test:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@v7
         with:
           python-version: "3.12"
           cache: pip
@@ -34,11 +34,24 @@ jobs:
       - name: Ruff lint
         run: ruff check .
 
+      - name: Dependency audit
+        run: pip-audit -r requirements-dev.txt
+
       - name: Compile check
-        run: python -m py_compile apk_builder.py
+        run: |
+          python -m py_compile apk_builder.py
+          python -m py_compile builder_core.py
 
       - name: Run tests
-        run: pytest -q
+        run: pytest --cov=. --cov-report=xml --cov-report=term -q
+
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v4
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          files: ./coverage.xml
+          fail_ci_if_error: false
+          verbose: true
 
       - name: Shell syntax and ShellCheck
         run: |
@@ -54,3 +67,5 @@ jobs:
           grep -q '^Type=Application' Airux-APK-Builder.desktop
           bash scripts/install-desktop.sh /tmp/Airux-APK-Builder.desktop
           grep -q 'apk_builder.py' /tmp/Airux-APK-Builder.desktop
+          grep -q '^Type=Application' /tmp/Airux-APK-Builder.desktop
+          grep -q '^Path=' /tmp/Airux-APK-Builder.desktop

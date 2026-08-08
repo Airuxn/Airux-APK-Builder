@@ -3,9 +3,7 @@
 
 from __future__ import annotations
 
-import json
 import os
-import re
 import shutil
 import subprocess
 import threading
@@ -15,18 +13,19 @@ from datetime import datetime
 from pathlib import Path
 from tkinter import filedialog, messagebox, ttk
 
-# Optional default Expo app folder (apps/mobile with eas.json). Override with AIRUX_APK_DEFAULT_PROJECT.
-_DEFAULT_ENV = os.environ.get("AIRUX_APK_DEFAULT_PROJECT", "").strip()
-DEFAULT_PROJECT = Path(_DEFAULT_ENV).expanduser() if _DEFAULT_ENV else Path()
-BRAND_URL = os.environ.get("AIRUX_BRAND_URL", "https://the-airux-ecosystem.vercel.app/").strip()
-BUILD_START_MARKER = "▸ Build gestart "
-BUILD_LOG_ERROR_PATTERN = re.compile(
-    r"\berror:|build failed|failure:|build mislukt|\bexception\b",
-    re.I,
-)
-LOG_IGNORE_PATTERNS = (
-    re.compile(r"checkkotlingradlepluginconfigurationerrors", re.I),
-    re.compile(r"node-domexception", re.I),
+from builder_core import (
+    BRAND_URL,
+    BUILD_LOG_ERROR_PATTERN,
+    BUILD_START_MARKER,
+    DEFAULT_PROJECT,
+    WARNING_PATTERN,
+    _line_ignored_for_scan,
+    check_android,
+    check_eas,
+    check_node,
+    classify_log_line,
+    find_newest_apk,
+    read_app_slug,
 )
 
 
@@ -435,27 +434,8 @@ class ApkBuilderApp(tk.Tk):
         btn.bind("<Leave>", leave)
         return btn
 
-    def check_node(self) -> tuple[bool, str]:
-        try:
-            subprocess.run(["node", "--version"], capture_output=True, check=True, timeout=5)
-            subprocess.run(["npx", "--version"], capture_output=True, check=True, timeout=8)
-            return True, "ok"
-        except (subprocess.CalledProcessError, FileNotFoundError, subprocess.TimeoutExpired):
-            return False, "fail"
-
-    def check_android(self) -> tuple[bool, str]:
-        home = os.environ.get("ANDROID_HOME") or str(Path.home() / "Android" / "Sdk")
-        return Path(home).is_dir(), home
-
-    def check_eas(self) -> tuple[bool, str]:
-        try:
-            r = subprocess.run(["npx", "eas-cli", "whoami"], capture_output=True, text=True, timeout=25)
-            return r.returncode == 0, r.stdout
-        except (FileNotFoundError, subprocess.TimeoutExpired):
-            return False, "fail"
-
     def run_all_checks(self) -> None:
-        for tile, fn in ((self.tile_node, self.check_node), (self.tile_android, self.check_android), (self.tile_eas, self.check_eas)):
+        for tile, fn in ((self.tile_node, check_node), (self.tile_android, check_android), (self.tile_eas, check_eas)):
             tile.set_state("busy")
             ok, _ = fn()
             tile.set_state("ok" if ok else "fail")
@@ -545,24 +525,6 @@ class ApkBuilderApp(tk.Tk):
         except OSError:
             return None
 
-    @staticmethod
-    def _line_ignored_for_scan(line: str) -> bool:
-        lowered = line.lower()
-        return any(pattern.search(lowered) for pattern in LOG_IGNORE_PATTERNS)
-
-    @staticmethod
-    def classify_log_line(line: str) -> str | None:
-        lowered = line.lower()
-        if ApkBuilderApp._line_ignored_for_scan(line):
-            return None
-        if BUILD_LOG_ERROR_PATTERN.search(lowered):
-            return "error"
-        if re.search(r"\bwarning:|\[run_gradlew\] w:|npm warn\b|deprecated", lowered):
-            return "warning"
-        if "build successful" in lowered or "✔ apk klaar" in lowered:
-            return "success"
-        return None
-
     def scan_build_log_issues(self) -> tuple[int, int]:
         text = self.log.get("1.0", "end-1c")
         if BUILD_START_MARKER in text:
@@ -570,12 +532,12 @@ class ApkBuilderApp(tk.Tk):
         warnings = 0
         errors = 0
         for line in text.splitlines():
-            if self._line_ignored_for_scan(line):
+            if _line_ignored_for_scan(line):
                 continue
             lowered = line.lower()
             if BUILD_LOG_ERROR_PATTERN.search(lowered):
                 errors += 1
-            elif re.search(r"\bwarning:|\[run_gradlew\] w:|npm warn\b|deprecated", lowered):
+            elif WARNING_PATTERN.search(lowered):
                 warnings += 1
         return warnings, errors
 
@@ -643,7 +605,7 @@ class ApkBuilderApp(tk.Tk):
             return
         assert proc.stdout
         for line in proc.stdout:
-            tag = self.classify_log_line(line)
+            tag = classify_log_line(line)
             self.ui_log(line, tag)
         if proc.wait() != 0:
             self.ui_finish(False, "Build mislukt — zie log.")
@@ -694,24 +656,6 @@ class ApkBuilderApp(tk.Tk):
         if self.header:
             self.header.stop()
         super().destroy()
-
-
-def read_app_slug(project: Path) -> str | None:
-    app_json = project / "app.json"
-    if not app_json.is_file():
-        return None
-    try:
-        data = json.loads(app_json.read_text(encoding="utf-8"))
-        slug = data.get("expo", data).get("slug") if isinstance(data, dict) else None
-        return slug.strip().lower().replace(" ", "-") if isinstance(slug, str) and slug.strip() else None
-    except (OSError, ValueError, AttributeError):
-        return None
-
-
-def find_newest_apk(project: Path) -> Path | None:
-    ignore = {"node_modules", ".gradle", "intermediates"}
-    files = [p for p in project.glob("**/*.apk") if p.is_file() and not any(x in ignore for x in p.parts)]
-    return max(files, key=lambda p: p.stat().st_mtime) if files else None
 
 
 def main() -> None:

@@ -18,6 +18,7 @@ cd Airux-APK-Builder
 python3 -m venv .venv && source .venv/bin/activate
 pip install -r requirements-dev.txt
 ruff check .
+pip-audit -r requirements-dev.txt
 pytest -q
 python3 -m py_compile apk_builder.py
 bash scripts/check-setup.sh
@@ -29,7 +30,7 @@ Full APK builds need Node 20+, Android SDK, JDK 17, and an Expo login — not re
 
 1. Fork and branch from `main`.
 2. One logical change per PR.
-3. Run CI checks locally before opening (`ruff`, `pytest`, `py_compile`, ShellCheck on `*.sh`).
+3. Run CI checks locally before opening (`ruff`, `pip-audit`, `pytest`, `py_compile`, ShellCheck on `*.sh`).
 4. Keep the Dutch UI copy consistent unless the PR intentionally adds i18n.
 5. Never commit secrets, APKs, or personal project paths as hard-coded defaults.
 

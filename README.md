@@ -4,9 +4,13 @@ Desktop GUI to build **Android APKs locally** with **Expo EAS** (`eas build --lo
 
 **Status:** stable · **Stack:** Python 3.10+ · tkinter · EAS CLI · [MIT](LICENSE)
 
-[![CI](https://github.com/Airuxn/Airux-APK-Builder/actions/workflows/ci.yml/badge.svg)](https://github.com/Airuxn/Airux-APK-Builder/actions/workflows/ci.yml)
+**Project age:** first public release on 2026-08-07 — this repo is a few days old and intentionally scoped to one job: turn an Expo app folder into a local Android APK with minimal friction.
 
-**Quality:** CI (Ruff, pytest, py_compile, ShellCheck) · CodeQL · Dependabot
+[![CI](https://github.com/Airuxn/Airux-APK-Builder/actions/workflows/ci.yml/badge.svg)](https://github.com/Airuxn/Airux-APK-Builder/actions/workflows/ci.yml)
+[![codecov](https://codecov.io/gh/Airuxn/Airux-APK-Builder/branch/main/graph/badge.svg)](https://codecov.io/gh/Airuxn/Airux-APK-Builder)
+[![License](https://img.shields.io/github/license/Airuxn/Airux-APK-Builder)](LICENSE)
+
+**Quality:** CI (Ruff, pip-audit, pytest, py_compile, ShellCheck) · CodeQL · Dependabot
 
 ---
 
@@ -84,13 +88,53 @@ Optional env:
 
 | Path | Description |
 |------|-------------|
-| [`apk_builder.py`](apk_builder.py) | Main tkinter application |
+| [`apk_builder.py`](apk_builder.py) | Main tkinter application (GUI) |
+| [`builder_core.py`](builder_core.py) | Pure, testable helper functions used by the GUI |
 | [`Start.sh`](Start.sh) | Launcher |
 | [`Airux-APK-Builder.desktop`](Airux-APK-Builder.desktop) | Linux desktop entry |
-| [`tests/`](tests/) | Unit tests for log scan / slug / APK discovery |
+| [`tests/`](tests/) | Unit tests for pure helpers in `builder_core.py` and shell scripts |
 | [`scripts/check-setup.sh`](scripts/check-setup.sh) | Local toolchain smoke check |
 | [`scripts/install-desktop.sh`](scripts/install-desktop.sh) | Install Linux `.desktop` launcher |
 | [`.github/workflows/ci.yml`](.github/workflows/ci.yml) | CI |
+
+---
+
+## Testing strategy
+
+Coverage is measured by `pytest --cov=builder_core` and reported to Codecov.
+The badge reflects the **pure, display-free helpers** in [`builder_core.py`](builder_core.py):
+
+- `classify_log_line` / `_line_ignored_for_scan` — EAS/local-build log-line classification
+- `read_app_slug` — Expo slug parsing and sanitization for auto-generated filenames
+- `find_newest_apk` — APK discovery with cache-directory filtering
+- `check_node`, `check_android`, `check_eas` — local toolchain smoke checks
+- `scripts/install-desktop.sh` — Linux desktop-entry install
+
+The GUI layer in `apk_builder.py` (`ApkBuilderApp`, `ShimmerHeader`, `PreflightTile`,
+`AccentPanel`, `BuildButton`, `StatusChip`, and event handlers) is **not** included
+in the coverage badge because it requires a display server (X11/Wayland). CI still
+validates it with `python -m py_compile apk_builder.py`, and manual desktop QA is
+run on a Linux workstation. Real GUI coverage would need Xvfb-based headless tkinter
+fixtures, which we have not added yet.
+
+---
+
+## What makes this different
+
+Most Expo APK tooling is cloud-first. Airux APK Builder keeps the build **local** so
+you retain full control of your Android keystore, signing credentials, and network
+path. It is intentionally a single-file desktop app rather than a SaaS wrapper or
+full CI pipeline.
+
+### Lessons learned
+
+- **Separate the testable bits.** A polished tkinter UI is fast to build but hard to
+  unit-test without a display. Putting pure helpers into `builder_core.py` makes the
+  coverage badge honest and the GUI easy to ignore in Codecov.
+- **Real coverage > high coverage.** The helper suite is small, but every tested
+  function does a real job the app depends on.
+- **CI is part of the product.** Ruff, `pip-audit`, compile checks, and pytest all
+  run before a commit is pushed, so a reviewer can trust the green checkmark.
 
 ---
 
@@ -100,6 +144,7 @@ Optional env:
 python3 -m venv .venv && source .venv/bin/activate
 pip install -r requirements-dev.txt
 ruff check .
+pip-audit -r requirements-dev.txt
 pytest -q
 python3 -m py_compile apk_builder.py
 bash scripts/check-setup.sh
