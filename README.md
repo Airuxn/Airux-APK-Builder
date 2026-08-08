@@ -5,6 +5,8 @@ Desktop GUI to build **Android APKs locally** with **Expo EAS** (`eas build --lo
 **Status:** stable · **Stack:** Python 3.10+ · tkinter · EAS CLI · [MIT](LICENSE)
 
 [![CI](https://github.com/Airuxn/Airux-APK-Builder/actions/workflows/ci.yml/badge.svg)](https://github.com/Airuxn/Airux-APK-Builder/actions/workflows/ci.yml)
+[![codecov](https://codecov.io/gh/Airuxn/Airux-APK-Builder/branch/main/graph/badge.svg)](https://codecov.io/gh/Airuxn/Airux-APK-Builder)
+[![License](https://img.shields.io/github/license/Airuxn/Airux-APK-Builder)](LICENSE)
 
 **Quality:** CI (Ruff, pip-audit, pytest, py_compile, ShellCheck) · CodeQL · Dependabot
 
