@@ -86,6 +86,19 @@ def find_newest_apk(project: Path) -> Path | None:
     return max(files, key=lambda p: p.stat().st_mtime) if files else None
 
 
+def resolve_expo_project_dir(path: Path) -> Path | None:
+    """Directory that contains eas.json — accepts apps/mobile or parent folders like apps/."""
+    candidate = path.expanduser()
+    if not candidate.is_dir():
+        return None
+    if (candidate / "eas.json").is_file():
+        return candidate
+    for nested in (candidate / "mobile", candidate / "apps" / "mobile"):
+        if nested.is_dir() and (nested / "eas.json").is_file():
+            return nested
+    return None
+
+
 def check_node() -> tuple[bool, str]:
     """Verify that ``node`` and ``npx`` are available on PATH."""
     try:

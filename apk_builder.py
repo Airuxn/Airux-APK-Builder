@@ -26,6 +26,7 @@ from builder_core import (
     classify_log_line,
     find_newest_apk,
     read_app_slug,
+    resolve_expo_project_dir,
 )
 
 
@@ -145,7 +146,17 @@ class PreflightTile(tk.Canvas):
 
     def run_check(self) -> None:
         self.set_state("busy")
-        self.after(60, lambda: self.set_state("ok" if self.check_fn()[0] else "fail"))
+        check_fn = self.check_fn
+
+        def work() -> None:
+            ok = check_fn()[0]
+
+            def apply() -> None:
+                self.set_state("ok" if ok else "fail")
+
+            self.after(0, apply)
+
+        threading.Thread(target=work, daemon=True).start()
 
 
 class AccentPanel(tk.Frame):
@@ -283,11 +294,11 @@ class ApkBuilderApp(tk.Tk):
         preflight.pack(fill="x", pady=(0, 8))
         tiles = tk.Frame(preflight.body, bg=AiruxTheme.PANEL)
         tiles.pack(fill="x")
-        self.tile_node = PreflightTile(tiles, "Node.js", self.check_node, AiruxTheme.SKY)
+        self.tile_node = PreflightTile(tiles, "Node.js", check_node, AiruxTheme.SKY)
         self.tile_node.pack(side="left", padx=(0, 8))
-        self.tile_android = PreflightTile(tiles, "Android SDK", self.check_android, AiruxTheme.TEAL)
+        self.tile_android = PreflightTile(tiles, "Android SDK", check_android, AiruxTheme.TEAL)
         self.tile_android.pack(side="left", padx=(0, 8))
-        self.tile_eas = PreflightTile(tiles, "Expo / EAS", self.check_eas, AiruxTheme.AMBER)
+        self.tile_eas = PreflightTile(tiles, "Expo / EAS", check_eas, AiruxTheme.AMBER)
         self.tile_eas.pack(side="left")
         self._ghost_btn(tiles, "Alles testen", self.run_all_checks).pack(side="right")
 
@@ -435,10 +446,20 @@ class ApkBuilderApp(tk.Tk):
         return btn
 
     def run_all_checks(self) -> None:
-        for tile, fn in ((self.tile_node, check_node), (self.tile_android, check_android), (self.tile_eas, check_eas)):
+        tiles = ((self.tile_node, check_node), (self.tile_android, check_android), (self.tile_eas, check_eas))
+        for tile, _fn in tiles:
             tile.set_state("busy")
-            ok, _ = fn()
-            tile.set_state("ok" if ok else "fail")
+
+        def work() -> None:
+            results = [(tile, fn()) for tile, fn in tiles]
+
+            def apply() -> None:
+                for tile, (ok, _) in results:
+                    tile.set_state("ok" if ok else "fail")
+
+            self.after(0, apply)
+
+        threading.Thread(target=work, daemon=True).start()
 
     def open_brand(self) -> None:
         try:
@@ -553,10 +574,17 @@ class ApkBuilderApp(tk.Tk):
     def start_build(self) -> None:
         if self.building:
             return
-        project = Path(self.project_var.get().strip()).expanduser()
-        if not project.is_dir() or not (project / "eas.json").is_file():
-            messagebox.showerror("Airux Tech", "Kies een geldige apps/mobile map met eas.json.")
+        project_raw = Path(self.project_var.get().strip()).expanduser()
+        project = resolve_expo_project_dir(project_raw)
+        if not project:
+            messagebox.showerror(
+                "Airux Tech",
+                "Kies de Expo-map met eas.json (bijv. apps/mobile in je monorepo).",
+            )
             return
+        if project != project_raw:
+            self.project_var.set(str(project))
+            self.append_log(f"  Projectmap: {project} (eas.json gevonden)\n", "info")
         output_dir = self.output_var.get().strip()
         if not output_dir:
             output_dir = filedialog.askdirectory(title="APK opslaan in", initialdir=str(Path.home() / "Desktop"))

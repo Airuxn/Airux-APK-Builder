@@ -132,6 +132,29 @@ def test_find_newest_apk_nonexistent_path() -> None:
     assert bc.find_newest_apk(Path("/this/should/not/exist")) is None
 
 
+def test_resolve_expo_project_dir_direct(tmp_path: Path) -> None:
+    (tmp_path / "eas.json").write_text("{}", encoding="utf-8")
+    assert bc.resolve_expo_project_dir(tmp_path) == tmp_path
+
+
+def test_resolve_expo_project_dir_apps_parent(tmp_path: Path) -> None:
+    mobile = tmp_path / "mobile"
+    mobile.mkdir()
+    (mobile / "eas.json").write_text("{}", encoding="utf-8")
+    assert bc.resolve_expo_project_dir(tmp_path) == mobile
+
+
+def test_resolve_expo_project_dir_monorepo_root(tmp_path: Path) -> None:
+    mobile = tmp_path / "apps" / "mobile"
+    mobile.mkdir(parents=True)
+    (mobile / "eas.json").write_text("{}", encoding="utf-8")
+    assert bc.resolve_expo_project_dir(tmp_path) == mobile
+
+
+def test_resolve_expo_project_dir_missing(tmp_path: Path) -> None:
+    assert bc.resolve_expo_project_dir(tmp_path) is None
+
+
 # --- Environment checks -----------------------------------------------------
 
 
